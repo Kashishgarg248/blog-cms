@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> | BlogCMS</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <link href="/css/style.css" rel="stylesheet" />
+</head>
+<body>
+  <% if (currentUser) { %>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo"><span>BlogCMS</span></div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Close menu">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="user-info">
+      <div class="avatar"><%= currentUser.name.charAt(0).toUpperCase() %></div>
+      <div class="user-meta">
+        <div class="user-name"><%= currentUser.name %></div>
+        <div class="badge badge-<%= currentUser.role %>" style="margin-top:.25rem">
+          <%= currentUser.role.replace('_', ' ') %>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="/dashboard" class="nav-item">
+        <i class="fas fa-home"></i><span>Dashboard</span>
+      </a>
+      <% if (can('read_blog')) { %>
+      <a href="/blogs" class="nav-item">
+        <i class="fas fa-newspaper"></i><span>All Blogs</span>
+      </a>
+      <% } %>
+      <% if (can('create_blog')) { %>
+      <a href="/blogs/create" class="nav-item">
+        <i class="fas fa-plus-circle"></i><span>New Blog</span>
+      </a>
+      <% } %>
+      <div class="nav-section">Approvals</div>
+      <a href="/change-requests/mine" class="nav-item">
+        <i class="fas fa-paper-plane"></i><span>My Requests</span>
+      </a>
+      <% if (can('approve_change') || can('reject_change')) { %>
+      <a href="/change-requests" class="nav-item">
+        <i class="fas fa-clipboard-check"></i><span>Pending Approvals</span>
+        <% if (typeof pendingApprovalCount !== 'undefined' && pendingApprovalCount > 0) { %>
+        <span class="badge-count"><%= pendingApprovalCount %></span>
+        <% } %>
+      </a>
+      <% } %>
+
+      <% if (can('view_users') || can('approve_user')) { %>
+      <div class="nav-section">Admin</div>
+      <a href="/admin/dashboard" class="nav-item">
+        <i class="fas fa-chart-bar"></i><span>Admin Panel</span>
+      </a>
+      <a href="/admin/users" class="nav-item">
+        <i class="fas fa-users"></i><span>User Management</span>
+      </a>
+      <% } %>
+    </nav>
+
+    <div class="sidebar-footer">
+      <form action="/auth/logout" method="POST">
+        <button type="submit" class="logout-btn">
+          <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="topbar-title"><%= title %></div>
+    </header>
+
+    <% if (flash) { %>
+    <div class="flash-banner flash-<%= flash.type %>">
+      <i class="fas fa-<%= flash.type === 'success' ? 'check-circle' : flash.type === 'warning' ? 'exclamation-triangle' : 'times-circle' %>"></i>
+      <span><%= flash.message %></span>
+      <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+    </div>
+    <% } %>
+
+    <main class="content">
+      <%- body %>
+    </main>
+  </div>
+
+  <% } else { %>
+
+  <!-- Auth layout: flash sits above the card, centred in the page -->
+  <main class="auth-page">
+    <div class="auth-page-inner">
+      <% if (flash) { %>
+      <div class="auth-flash auth-flash-<%= flash.type %>">
+        <i class="fas fa-<%= flash.type === 'success' ? 'check-circle' : flash.type === 'warning' ? 'exclamation-triangle' : 'times-circle' %>"></i>
+        <span><%= flash.message %></span>
+        <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+      </div>
+      <% } %>
+      <%- body %>
+    </div>
+  </main>
+
+  <% } %>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

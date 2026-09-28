@@ -1,0 +1,156 @@
+<div class="page-header">
+  <div>
+    <a href="/approvals" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+  <span class="badge badge-<%= request.status %>" style="font-size:.8rem;padding:.3rem .8rem"><%= request.status %></span>
+</div>
+
+<div class="approval-detail-grid">
+
+  <!-- Left: request info -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Request #<%= request.id %></h3>
+        <p><span class="action-chip action-<%= request.action.split('_')[0] %>"><%= request.action.replace(/_/g,' ') %></span></p>
+      </div>
+      <div class="card-body">
+
+        <div class="detail-row">
+          <span class="detail-label">Summary</span>
+          <span class="detail-value"><%= request.summary %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Maker</span>
+          <span class="detail-value">
+            <%= request.maker ? request.maker.name : 'Unknown' %>
+            <span class="text-muted">(<%= request.maker ? request.maker.role : '' %>)</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Submitted</span>
+          <span class="detail-value" style="font-family:var(--font-mono);font-size:.82rem">
+            <%= new Date(request.createdAt).toLocaleString('en-IN') %>
+          </span>
+        </div>
+        <% if (request.checker) { %>
+        <div class="detail-row">
+          <span class="detail-label">Reviewed by</span>
+          <span class="detail-value"><%= request.checker.name %></span>
+        </div>
+        <% } %>
+        <% if (request.checkerComment) { %>
+        <div class="detail-row">
+          <span class="detail-label">Checker note</span>
+          <span class="detail-value"><%= request.checkerComment %></span>
+        </div>
+        <% } %>
+
+        <!-- Payload diff -->
+        <% if (request.originalData) { %>
+        <div class="diff-section">
+          <div class="diff-col">
+            <div class="diff-header diff-old">Before</div>
+            <% Object.entries(request.originalData).forEach(([k, v]) => { %>
+            <div class="diff-row">
+              <span class="diff-key"><%= k %></span>
+              <span class="diff-val"><%= Array.isArray(v) ? v.join(', ') : v %></span>
+            </div>
+            <% }) %>
+          </div>
+          <div class="diff-col">
+            <div class="diff-header diff-new">After (proposed)</div>
+            <% const payloadKeys = Object.keys(request.originalData);
+               payloadKeys.forEach(k => {
+                 const v = request.payload[k];
+            %>
+            <div class="diff-row">
+              <span class="diff-key"><%= k %></span>
+              <span class="diff-val <%= String(request.originalData[k]) !== String(Array.isArray(v)?v.join(','):v) ? 'diff-changed' : '' %>">
+                <%= Array.isArray(v) ? v.join(', ') : (v !== undefined ? v : '—') %>
+              </span>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+        <% } else { %>
+        <div class="diff-section" style="margin-top:1rem">
+          <div class="diff-col" style="flex:1">
+            <div class="diff-header diff-new">Proposed Data</div>
+            <% Object.entries(request.payload).filter(([k])=>k!=='authorId').forEach(([k,v]) => { %>
+            <div class="diff-row">
+              <span class="diff-key"><%= k %></span>
+              <span class="diff-val"><%= Array.isArray(v) ? v.join(', ') : v %></span>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- Blog content preview for create/update -->
+        <% if ((request.action === 'blog_create' || request.action === 'blog_update') && request.payload.content) { %>
+        <div class="content-preview">
+          <div class="diff-header diff-new" style="margin-bottom:.75rem">Content Preview</div>
+          <div class="preview-body"><%= request.payload.content.substring(0, 600) %><%= request.payload.content.length > 600 ? '…' : '' %></div>
+        </div>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: action panel -->
+  <div>
+    <% if (request.status === 'pending') { %>
+    <div class="card">
+      <div class="card-header"><h3>Take Action</h3></div>
+      <div class="card-body">
+
+        <form action="/approvals/<%= request.id %>/approve" method="POST" style="margin-bottom:1rem"
+          onsubmit="return confirm('Approve this request and execute the action?')">
+          <div class="form-group">
+            <label for="approveComment">Comment (optional)</label>
+            <textarea name="checkerComment" id="approveComment" class="form-control" rows="3"
+              placeholder="Add a note for the maker..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">
+            <i class="fas fa-check-circle"></i> Approve & Execute
+          </button>
+        </form>
+
+        <form action="/approvals/<%= request.id %>/reject" method="POST"
+          onsubmit="return confirm('Reject this request?')">
+          <div class="form-group">
+            <label for="rejectComment">Reason for rejection <span class="required">*</span></label>
+            <textarea name="checkerComment" id="rejectComment" class="form-control" rows="3"
+              placeholder="Tell the maker why this was rejected..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger btn-full">
+            <i class="fas fa-times-circle"></i> Reject
+          </button>
+        </form>
+
+      </div>
+    </div>
+    <% } else { %>
+    <div class="card">
+      <div class="card-body" style="text-align:center;padding:2rem">
+        <% if (request.status === 'approved') { %>
+        <i class="fas fa-check-circle" style="font-size:2.5rem;color:var(--green);margin-bottom:.75rem;display:block"></i>
+        <p style="font-weight:600;color:var(--green)">This request was approved and executed.</p>
+        <% } else { %>
+        <i class="fas fa-times-circle" style="font-size:2.5rem;color:var(--crimson);margin-bottom:.75rem;display:block"></i>
+        <p style="font-weight:600;color:var(--crimson)">This request was rejected.</p>
+        <% } %>
+        <% if (request.checkerComment) { %>
+        <div class="detail-row" style="margin-top:1rem;text-align:left">
+          <span class="detail-label">Note</span>
+          <span class="detail-value"><%= request.checkerComment %></span>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+</div>

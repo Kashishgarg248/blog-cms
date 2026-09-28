@@ -1,0 +1,82 @@
+<div class="page-header">
+  <h2>My Requests</h2>
+  <div style="display:flex;gap:.5rem">
+    <a href="/blogs" class="btn btn-outline"><i class="fas fa-newspaper"></i> Blogs</a>
+    <% if (can('create_blog')) { %>
+    <a href="/blogs/create" class="btn btn-primary"><i class="fas fa-plus"></i> New Blog</a>
+    <% } %>
+  </div>
+</div>
+
+<!-- Status summary -->
+<div class="stats-grid" style="margin-bottom:1.5rem">
+  <div class="stat-card">
+    <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= counts.pending %></div>
+      <div class="stat-label">Pending</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= counts.approved %></div>
+      <div class="stat-label">Approved</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= counts.rejected %></div>
+      <div class="stat-label">Rejected</div>
+    </div>
+  </div>
+</div>
+
+<% if (requests.length === 0) { %>
+<div class="empty-state large">
+  <i class="fas fa-paper-plane"></i>
+  <h3>No requests yet</h3>
+  <p>When you create, edit, or delete a blog, your requests will appear here for checker approval.</p>
+</div>
+<% } else { %>
+<div class="card">
+  <div class="table-wrapper" style="border:none">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Action</th>
+          <th>Summary</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th>Checker Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% requests.forEach(r => { %>
+        <tr>
+          <td class="text-muted" style="font-family:var(--font-mono)">#<%= r.id %></td>
+          <td><span class="action-chip action-<%= r.action.split('_')[0] %>"><%= r.action.replace(/_/g,' ') %></span></td>
+          <td style="max-width:260px"><%= r.summary %></td>
+          <td style="font-family:var(--font-mono);font-size:.76rem;white-space:nowrap">
+            <%= new Date(r.createdAt).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) %>
+          </td>
+          <td><span class="badge badge-<%= r.status %>"><%= r.status %></span></td>
+          <td style="font-size:.82rem;color:var(--ink-soft)">
+            <% if (r.checkerComment) { %>
+            <span title="<%= r.checkerComment %>">
+              <i class="fas fa-comment-alt" style="margin-right:.3rem;color:var(--muted)"></i>
+              <%= r.checkerComment.length > 60 ? r.checkerComment.substring(0,60) + '…' : r.checkerComment %>
+            </span>
+            <% } else { %>
+            <span class="text-muted">—</span>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>

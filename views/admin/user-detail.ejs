@@ -1,0 +1,196 @@
+<div class="page-header">
+  <h2>Manage User: <%= user.name %></h2>
+  <a href="/admin/users" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<% if (pendingChange) { %>
+<div class="alert alert-warning">
+  <i class="fas fa-hourglass-half"></i>
+  <div>
+    <strong>A change to this account is pending approval</strong>
+    (submitted by <%= pendingChange.requester ? pendingChange.requester.name : 'someone' %>).
+    The account's current role, status and permissions remain in effect until a checker reviews it.
+    <% if (canReview) { %>
+    — <a href="/change-requests/<%= pendingChange.id %>">view the pending change</a>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<div class="user-detail-grid">
+  <!-- Left: profile card -->
+  <div class="user-profile-card">
+    <div class="avatar large"><%= user.name.charAt(0).toUpperCase() %></div>
+    <h3><%= user.name %></h3>
+    <p class="text-muted"><%= user.email %></p>
+    <div style="margin:.55rem 0; display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap;">
+      <span class="badge badge-<%= user.status %>"><%= user.status %></span>
+      <span class="badge badge-<%= user.role %>"><%= user.role.replace('_',' ') %></span>
+    </div>
+    <% if (user.bio) { %><p class="user-bio"><%= user.bio %></p><% } %>
+    <p class="text-sm text-muted" style="margin-top:.75rem">
+      Joined <%= new Date(user.createdAt).toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}) %>
+    </p>
+
+    <!-- Self-edit or same/higher-rank notice shown in the profile card -->
+    <% if (!capability.canEdit) { %>
+    <div class="alert alert-warning" style="margin-top:1.25rem; text-align:left; font-size:.8rem">
+      <i class="fas fa-lock"></i> <%= capability.reason %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Right: edit form or locked state -->
+  <div>
+    <% if (capability.canEdit && !pendingChange) { %>
+    <div class="card">
+      <div class="card-header">
+        <h3>Update Role &amp; Status</h3>
+        <p class="text-sm text-muted" style="margin-top:.25rem">
+          You can assign roles and permissions up to your own level.
+        </p>
+      </div>
+      <div class="card-body">
+        <form action="/admin/users/<%= user.id %>" method="POST" id="userForm">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Account Status</label>
+              <select name="status" class="form-control" id="statusSelect">
+                <option value="pending"   <%= user.status === 'pending'   ? 'selected' : '' %>>Pending</option>
+                <option value="approved"  <%= user.status === 'approved'  ? 'selected' : '' %>>Approved</option>
+                <option value="rejected"  <%= user.status === 'rejected'  ? 'selected' : '' %>>Rejected</option>
+                <option value="suspended" <%= user.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Role</label>
+              <select name="role" class="form-control" id="roleSelect">
+                <% capability.assignableRoles.forEach(r => { %>
+                <option value="<%= r %>" <%= user.role === r ? 'selected' : '' %>>
+                  <%= r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) %>
+                </option>
+                <% }) %>
+              </select>
+              <span class="field-hint">Only roles below your own level are shown.</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Permissions</label>
+            <p class="text-sm text-muted" style="margin-bottom:.65rem">
+              Tick a role above to auto-fill. You can only grant permissions you hold yourself
+              — greyed ones are outside your authority.
+            </p>
+            <div class="permissions-grid" id="permissionsGrid">
+              <%
+              const permLabels = {
+                create_blog:    'Create Blog',
+                read_blog:      'Read Blog',
+                update_blog:    'Update Blog',
+                delete_blog:    'Delete Blog',
+                publish_blog:   'Publish Blog',
+                view_users:     'View Users',
+                approve_user:   'Approve Users',
+                assign_role:    'Assign Roles',
+                delete_user:    'Delete Users',
+                manage_roles:   'Manage Roles',
+                view_all_blogs: 'View All Blogs'
+              };
+              const userPerms = user.permissions || [];
+              %>
+              <% allPermissions.forEach(perm => {
+                const grantable = capability.grantablePerms.includes(perm);
+              %>
+              <label class="permission-checkbox <%= grantable ? '' : 'perm-locked' %>">
+                <input type="checkbox"
+                  name="permissions"
+                  value="<%= perm %>"
+                  <%= userPerms.includes(perm) ? 'checked' : '' %>
+                  <%= grantable ? '' : 'disabled' %>
+                />
+                <span>
+                  <%= permLabels[perm] || perm %>
+                  <% if (!grantable) { %><i class="fas fa-lock" style="font-size:.6rem;margin-left:.3rem;opacity:.45"></i><% } %>
+                </span>
+              </label>
+              <% }) %>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <a href="/admin/users" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <% } else { %>
+    <!-- Read-only view when editing is not permitted -->
+    <div class="card">
+      <div class="card-header"><h3>Current Permissions</h3></div>
+      <div class="card-body">
+        <div class="permissions-grid">
+          <%
+          const permLabels2 = {
+            create_blog:'Create Blog', read_blog:'Read Blog', update_blog:'Update Blog',
+            delete_blog:'Delete Blog', publish_blog:'Publish Blog', view_users:'View Users',
+            approve_user:'Approve Users', assign_role:'Assign Roles', delete_user:'Delete Users',
+            manage_roles:'Manage Roles', view_all_blogs:'View All Blogs'
+          };
+          (user.permissions || []).forEach(perm => {
+          %>
+          <div class="perm-badge-readonly">
+            <i class="fas fa-check-circle" style="color:var(--green);margin-right:.35rem"></i>
+            <%= permLabels2[perm] || perm %>
+          </div>
+          <% }) %>
+          <% if (!user.permissions || user.permissions.length === 0) { %>
+          <p class="text-muted text-sm">No permissions assigned.</p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Recent blogs section -->
+    <% if (user.blogs && user.blogs.length > 0) { %>
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-header"><h3>Recent Blogs by <%= user.name %></h3></div>
+      <div class="card-body">
+        <% user.blogs.forEach(blog => { %>
+        <div class="blog-list-item">
+          <div class="blog-list-info">
+            <a href="/blogs/<%= blog.id %>" class="blog-list-title"><%= blog.title %></a>
+            <div class="blog-meta">
+              <span class="badge badge-<%= blog.status %>"><%= blog.status %></span>
+              <span><%= new Date(blog.createdAt).toLocaleDateString() %></span>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+  </div><!-- /right col -->
+</div>
+
+<script>
+  const ROLE_PERMISSIONS_MAP = <%- JSON.stringify(ROLE_PERMISSIONS) %>;
+  const grantablePerms = <%- JSON.stringify(capability.canEdit ? capability.grantablePerms : []) %>;
+  const roleSelect = document.getElementById('roleSelect');
+
+  roleSelect && roleSelect.addEventListener('change', function () {
+    const rolePerms = ROLE_PERMISSIONS_MAP[this.value] || [];
+    document.querySelectorAll('#permissionsGrid input[type=checkbox]').forEach(cb => {
+      if (!cb.disabled) {
+        // Only auto-check if this perm is in the role AND the editor can grant it
+        cb.checked = rolePerms.includes(cb.value) && grantablePerms.includes(cb.value);
+      }
+    });
+  });
+</script>

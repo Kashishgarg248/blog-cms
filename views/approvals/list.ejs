@@ -1,0 +1,63 @@
+<div class="page-header">
+  <h2>Approval Requests</h2>
+</div>
+
+<div class="filter-tabs">
+  <a href="/approvals?filter=pending"  class="tab <%= filter === 'pending'  ? 'active' : '' %>">Pending  <span class="tab-count"><%= counts.pending %></span></a>
+  <a href="/approvals?filter=approved" class="tab <%= filter === 'approved' ? 'active' : '' %>">Approved <span class="tab-count"><%= counts.approved %></span></a>
+  <a href="/approvals?filter=rejected" class="tab <%= filter === 'rejected' ? 'active' : '' %>">Rejected <span class="tab-count"><%= counts.rejected %></span></a>
+  <a href="/approvals?filter=all"      class="tab <%= filter === 'all'      ? 'active' : '' %>">All      <span class="tab-count"><%= counts.all %></span></a>
+</div>
+
+<% if (requests.length === 0) { %>
+<div class="empty-state large">
+  <i class="fas fa-check-double"></i>
+  <h3>No requests</h3>
+  <p>No <%= filter === 'all' ? '' : filter %> approval requests at the moment.</p>
+</div>
+<% } else { %>
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Action</th>
+        <th>Summary</th>
+        <th>Maker</th>
+        <th>Submitted</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% requests.forEach(r => { %>
+      <tr>
+        <td class="text-muted" style="font-family:var(--font-mono)">#<%= r.id %></td>
+        <td><span class="action-chip action-<%= r.action.split('_')[0] %>"><%= r.action.replace(/_/g,' ') %></span></td>
+        <td style="max-width:280px"><%= r.summary %></td>
+        <td>
+          <div class="user-cell">
+            <div class="avatar-sm"><%= r.maker ? r.maker.name.charAt(0).toUpperCase() : '?' %></div>
+            <div>
+              <div style="font-weight:600;font-size:.84rem"><%= r.maker ? r.maker.name : 'Unknown' %></div>
+              <div class="text-muted text-sm"><%= r.maker ? r.maker.role : '' %></div>
+            </div>
+          </div>
+        </td>
+        <td style="font-family:var(--font-mono);font-size:.76rem;white-space:nowrap">
+          <%= new Date(r.createdAt).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) %>
+        </td>
+        <td><span class="badge badge-<%= r.status %>"><%= r.status %></span></td>
+        <td>
+          <% if (r.status === 'pending') { %>
+          <a href="/approvals/<%= r.id %>" class="btn btn-sm btn-primary">Review</a>
+          <% } else { %>
+          <a href="/approvals/<%= r.id %>" class="btn btn-sm btn-outline">View</a>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>

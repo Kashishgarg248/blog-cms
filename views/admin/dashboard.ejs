@@ -1,0 +1,91 @@
+<div class="page-header">
+  <h2>Admin Dashboard</h2>
+  <a href="/admin/users?filter=pending" class="btn btn-primary">
+    <i class="fas fa-user-check"></i> Review Pending Users
+  </a>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= stats.totalUsers %></div>
+      <div class="stat-label">Total Users</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-user-clock"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= stats.pendingUsers %></div>
+      <div class="stat-label">Pending Approval</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fas fa-file-alt"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= stats.totalBlogs %></div>
+      <div class="stat-label">Total Blogs</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fas fa-globe"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= stats.publishedBlogs %></div>
+      <div class="stat-label">Published</div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h3>Recent Users</h3>
+      <a href="/admin/users" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th></tr>
+      </thead>
+      <tbody>
+        <% recentUsers.forEach(user => { %>
+        <tr>
+          <td><strong><%= user.name %></strong></td>
+          <td><%= user.email %></td>
+          <td><span class="badge badge-<%= user.role %>"><%= user.role %></span></td>
+          <td><span class="badge badge-<%= user.status %>"><%= user.status %></span></td>
+          <td><%= new Date(user.createdAt).toLocaleDateString() %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h3>Recent Blogs</h3>
+      <a href="/blogs" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="blog-list">
+      <% recentBlogs.forEach(blog => {
+        const authorInactive = blog.author && !['approved'].includes(blog.author.status);
+      %>
+      <div class="blog-list-item <%= authorInactive ? 'blog-list-item-disabled' : '' %>">
+        <div class="blog-list-info">
+          <% if (authorInactive) { %>
+          <span class="blog-list-title disabled-title"><%= blog.title %></span>
+          <% } else { %>
+          <a href="/blogs/<%= blog.id %>" class="blog-list-title"><%= blog.title %></a>
+          <% } %>
+          <div class="blog-meta">
+            <span class="badge badge-<%= blog.status %>"><%= blog.status %></span>
+            <span>by <%= blog.author ? blog.author.name : 'Unknown' %></span>
+            <% if (authorInactive) { %>
+            <span class="badge badge-suspended">author <%= blog.author.status %></span>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,133 @@
+<div class="page-header">
+  <h2>Review Change</h2>
+  <a href="/change-requests" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="card" style="margin-bottom:1.25rem">
+  <div class="card-header">
+    <h3><%= cr.entityType %> — <span class="badge badge-<%= cr.action === 'delete' ? 'suspended' : (cr.action === 'create' ? 'published' : 'pending') %>"><%= cr.action %></span></h3>
+    <p><%= cr.summary %></p>
+  </div>
+  <div class="card-body">
+    <div class="form-row">
+      <div>
+        <strong>Requested by</strong>
+        <p class="text-muted"><%= cr.requester ? (cr.requester.name + ' — ' + cr.requester.email) : 'Unknown' %></p>
+      </div>
+      <div>
+        <strong>Status</strong>
+        <p><span class="badge badge-<%= cr.status %>"><%= cr.status %></span></p>
+      </div>
+      <div>
+        <strong>Submitted</strong>
+        <p class="text-muted"><%= new Date(cr.createdAt).toLocaleString() %></p>
+      </div>
+    </div>
+
+    <% if (cr.status !== 'pending') { %>
+    <div class="form-row" style="margin-top:1rem">
+      <div>
+        <strong>Reviewed by</strong>
+        <p class="text-muted"><%= cr.reviewer ? cr.reviewer.name : '—' %> on <%= cr.reviewedAt ? new Date(cr.reviewedAt).toLocaleString() : '' %></p>
+      </div>
+      <% if (cr.reviewNote) { %>
+      <div>
+        <strong>Note</strong>
+        <p class="text-muted"><%= cr.reviewNote %></p>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<%
+  // Build a merged field list for the diff table.
+  const prev = cr.previousData || {};
+  const next = cr.payload || {};
+  const fields = [...new Set([...Object.keys(prev), ...Object.keys(next)])];
+  const fmt = (v) => {
+    if (v === null || v === undefined || v === '') return '—';
+    if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
+    if (v instanceof Date) return v.toString();
+    if (typeof v === 'string' && v.length > 300) return v.slice(0, 300) + '…';
+    return String(v);
+  };
+%>
+
+<% if (cr.action === 'delete') { %>
+<div class="card" style="margin-bottom:1.25rem">
+  <div class="card-header"><h3>Record to be deleted</h3></div>
+  <div class="card-body">
+    <% fields.forEach(f => { %>
+    <p><strong><%= f %>:</strong> <%= fmt(prev[f]) %></p>
+    <% }) %>
+  </div>
+</div>
+<% } else { %>
+<div class="card" style="margin-bottom:1.25rem">
+  <div class="card-header"><h3><%= cr.action === 'create' ? 'Proposed values' : 'Proposed changes' %></h3></div>
+  <div class="card-body">
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <% if (cr.action === 'update') { %><th>Current</th><% } %>
+            <th><%= cr.action === 'create' ? 'Proposed' : 'Proposed' %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% fields.forEach(f => {
+            const changed = cr.action === 'update' && fmt(prev[f]) !== fmt(next[f]);
+          %>
+          <tr>
+            <td><strong><%= f %></strong></td>
+            <% if (cr.action === 'update') { %>
+            <td class="text-muted"><%= fmt(prev[f]) %></td>
+            <% } %>
+            <td style="<%= changed ? 'color: var(--green-deep); font-weight: 600;' : '' %>"><%= fmt(next[f]) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<% if (blockedBySelf) { %>
+<div class="alert alert-warning">
+  <i class="fas fa-lock"></i>
+  You submitted this change yourself, so you cannot approve or reject it — segregation of duty requires a different checker to review it.
+</div>
+<% } %>
+
+<% if (cr.status === 'pending' && (canApprove || canReject)) { %>
+<div class="card">
+  <div class="card-header"><h3>Your decision</h3></div>
+  <div class="card-body" style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+    <% if (canApprove) { %>
+    <form action="/change-requests/<%= cr.id %>/approve" method="POST" style="flex:1; min-width:240px"
+      onsubmit="return confirm('Approve this change? It will be applied immediately.')">
+      <div class="form-group">
+        <label>Note (optional)</label>
+        <textarea name="note" class="form-control" rows="2" placeholder="Optional approval note"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full"><i class="fas fa-check"></i> Approve &amp; Apply</button>
+    </form>
+    <% } %>
+
+    <% if (canReject) { %>
+    <form action="/change-requests/<%= cr.id %>/reject" method="POST" style="flex:1; min-width:240px"
+      onsubmit="return confirm('Reject this change?')">
+      <div class="form-group">
+        <label>Reason <span class="required">*</span></label>
+        <textarea name="note" class="form-control" rows="2" placeholder="Required — why is this being rejected?" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-danger btn-full"><i class="fas fa-times"></i> Reject</button>
+    </form>
+    <% } %>
+  </div>
+</div>
+<% } %>

@@ -1,0 +1,43 @@
+<div class="page-header">
+  <h2>My Submitted Changes</h2>
+</div>
+
+<% if (requests.length === 0) { %>
+<div class="empty-state large">
+  <i class="fas fa-paper-plane"></i>
+  <h3>Nothing submitted yet</h3>
+  <p>Any blog or account change you submit will show up here while it awaits review.</p>
+</div>
+<% } else { %>
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Action</th>
+        <th>Status</th>
+        <th>Reviewed By</th>
+        <th>Note</th>
+        <th>Submitted</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% requests.forEach(cr => { %>
+      <tr>
+        <td>
+          <strong><%= cr.entityType %></strong>
+          <div class="text-muted text-sm"><%= cr.summary %></div>
+        </td>
+        <td><span class="badge badge-<%= cr.action === 'delete' ? 'suspended' : (cr.action === 'create' ? 'published' : 'pending') %>"><%= cr.action %></span></td>
+        <td><span class="badge badge-<%= cr.status %>"><%= cr.status %></span></td>
+        <td><%= cr.reviewer ? cr.reviewer.name : '—' %></td>
+        <td class="text-sm text-muted"><%= cr.reviewNote || '—' %></td>
+        <td class="text-sm text-muted"><%= new Date(cr.createdAt).toLocaleString() %></td>
+        <td><a href="/change-requests/<%= cr.id %>" class="btn btn-sm btn-outline">View</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>

@@ -1,0 +1,56 @@
+<div class="page-header">
+  <h2>Pending Approvals</h2>
+</div>
+
+<div class="filter-tabs" style="display:flex; gap:.5rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <a href="/change-requests?filter=pending" class="btn btn-sm <%= filter === 'pending' ? 'btn-primary' : 'btn-outline' %>">
+    Pending <span class="badge-count"><%= counts.pending %></span>
+  </a>
+  <a href="/change-requests?filter=approved" class="btn btn-sm <%= filter === 'approved' ? 'btn-primary' : 'btn-outline' %>">
+    Approved <span class="badge-count"><%= counts.approved %></span>
+  </a>
+  <a href="/change-requests?filter=rejected" class="btn btn-sm <%= filter === 'rejected' ? 'btn-primary' : 'btn-outline' %>">
+    Rejected <span class="badge-count"><%= counts.rejected %></span>
+  </a>
+</div>
+
+<% if (requests.length === 0) { %>
+<div class="empty-state large">
+  <i class="fas fa-clipboard-check"></i>
+  <h3>Nothing here</h3>
+  <p>No <%= filter %> change requests right now.</p>
+</div>
+<% } else { %>
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Action</th>
+        <th>Requested By</th>
+        <th>Status</th>
+        <th>Submitted</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% requests.forEach(cr => { %>
+      <tr>
+        <td>
+          <strong><%= cr.entityType %></strong>
+          <div class="text-muted text-sm"><%= cr.summary %></div>
+        </td>
+        <td><span class="badge badge-<%= cr.action === 'delete' ? 'suspended' : (cr.action === 'create' ? 'published' : 'pending') %>"><%= cr.action %></span></td>
+        <td>
+          <%= cr.requester ? cr.requester.name : 'Unknown' %>
+          <% if (cr.requestedBy === currentUserId) { %><span class="text-muted text-sm">(you)</span><% } %>
+        </td>
+        <td><span class="badge badge-<%= cr.status %>"><%= cr.status %></span></td>
+        <td class="text-sm text-muted"><%= new Date(cr.createdAt).toLocaleString() %></td>
+        <td><a href="/change-requests/<%= cr.id %>" class="btn btn-sm btn-outline">Review</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>

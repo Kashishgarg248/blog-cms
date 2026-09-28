@@ -1,0 +1,153 @@
+<div class="auth-container">
+  <div class="auth-card auth-card-wide">
+    <div class="auth-logo">
+      <h1>BlogCMS</h1>
+      <p>Create your account — pending admin approval</p>
+    </div>
+
+    <form action="/auth/register" method="POST" id="registerForm" novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <div class="input-icon">
+            <i class="fas fa-user"></i>
+            <input type="text" id="name" name="name" class="form-control"
+              placeholder="John Doe" value="<%= formData.name || '' %>" required />
+          </div>
+          <span class="field-error" id="nameError"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-icon">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="email" name="email" class="form-control"
+              placeholder="you@example.com" value="<%= formData.email || '' %>" required />
+          </div>
+          <span class="field-error" id="emailError"></span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-icon">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" name="password" class="form-control"
+              placeholder="Min 8 chars, upper, lower, number" required />
+            <button type="button" class="toggle-pass" onclick="togglePass('password')">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <span class="field-error" id="passwordError"></span>
+          <div class="password-strength" id="passStrength"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <div class="input-icon">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="confirmPassword" name="confirmPassword" class="form-control"
+              placeholder="Re-enter password" required />
+          </div>
+          <span class="field-error" id="confirmPasswordError"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="bio">Bio <span class="optional">(optional)</span></label>
+        <textarea id="bio" name="bio" class="form-control" rows="3"
+          placeholder="Tell us a little about yourself..."><%= formData.bio || '' %></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="registerSubmit">
+        <i class="fas fa-user-plus"></i> Register
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="/auth/login">Login here</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePass(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  // Live password strength indicator
+  document.getElementById('password').addEventListener('input', function () {
+    const val = this.value;
+    const el  = document.getElementById('passStrength');
+    let strength = 0;
+    if (val.length >= 8)           strength++;
+    if (/[A-Z]/.test(val))         strength++;
+    if (/[a-z]/.test(val))         strength++;
+    if (/\d/.test(val))            strength++;
+    if (/[^a-zA-Z0-9]/.test(val)) strength++;
+    const labels = ['', 'Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+    const colors = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
+    el.innerHTML = val
+      ? `<span style="color:${colors[strength]}">Password strength: ${labels[strength]}</span>`
+      : '';
+  });
+
+  function clearErrors() {
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-invalid'));
+  }
+
+  function setError(fieldId, errorId, msg) {
+    document.getElementById(errorId).textContent = msg;
+    document.getElementById(fieldId).classList.add('is-invalid');
+  }
+
+  function disableBtn(btn) {
+    btn.style.opacity = '0.65';
+    btn.style.pointerEvents = 'none';
+  }
+
+  function resetBtn(btn) {
+    btn.style.opacity = '';
+    btn.style.pointerEvents = '';
+  }
+
+  document.getElementById('registerForm').addEventListener('submit', function (e) {
+    clearErrors();
+    const name     = document.getElementById('name');
+    const email    = document.getElementById('email');
+    const password = document.getElementById('password');
+    const confirm  = document.getElementById('confirmPassword');
+    const btn      = document.getElementById('registerSubmit');
+    resetBtn(btn); // always reset so re-attempts work
+
+    let valid = true;
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passRe  = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    if (!name.value.trim() || name.value.trim().length < 2) {
+      setError('name', 'nameError', 'Name must be at least 2 characters.');
+      valid = false;
+    }
+    if (!emailRe.test(email.value)) {
+      setError('email', 'emailError', 'Please enter a valid email.');
+      valid = false;
+    }
+    if (!passRe.test(password.value)) {
+      setError('password', 'passwordError', 'Password needs 8+ chars, uppercase, lowercase, and a number.');
+      valid = false;
+    }
+    if (confirm.value !== password.value) {
+      setError('confirmPassword', 'confirmPasswordError', 'Passwords do not match.');
+      valid = false;
+    }
+
+    if (!valid) {
+      e.preventDefault(); // stop submission, button stays enabled
+    } else {
+      disableBtn(btn);    // only lock when actually submitting
+    }
+  });
+</script>

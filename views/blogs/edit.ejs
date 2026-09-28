@@ -1,0 +1,89 @@
+<div class="page-header">
+  <h2>Edit Blog</h2>
+  <a href="/blogs/<%= blog.id %>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="form-page">
+  <form action="/blogs/<%= blog.id %>?_method=PUT" method="POST" id="blogForm" novalidate>
+    <div class="form-group">
+      <label for="title">Blog Title <span class="required">*</span></label>
+      <input type="text" id="title" name="title" class="form-control"
+        value="<%= formData.title || blog.title %>" required />
+      <span class="field-error" id="titleError"></span>
+    </div>
+
+    <div class="form-group">
+      <label for="content">Content <span class="required">*</span></label>
+      <textarea id="content" name="content" class="form-control editor" rows="16" required><%= formData.content || blog.content %></textarea>
+      <span class="field-error" id="contentError"></span>
+      <div class="char-count"><span id="charCount">0</span> characters</div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tags">Tags</label>
+        <input type="text" id="tags" name="tags" class="form-control"
+          placeholder="tech, programming" value="<%= formData.tags || (blog.tags ? blog.tags.join(', ') : '') %>" />
+      </div>
+
+      <% if (can('publish_blog')) { %>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="form-control">
+          <option value="draft" <%= blog.status === 'draft' ? 'selected' : '' %>>Draft</option>
+          <option value="published" <%= blog.status === 'published' ? 'selected' : '' %>>Published</option>
+          <option value="archived" <%= blog.status === 'archived' ? 'selected' : '' %>>Archived</option>
+        </select>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="form-actions">
+      <a href="/blogs/<%= blog.id %>" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save"></i> Update Blog
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const content = document.getElementById('content');
+  const charCount = document.getElementById('charCount');
+  content.addEventListener('input', () => charCount.textContent = content.value.length);
+  charCount.textContent = content.value.length;
+
+  function clearErrors() {
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-invalid'));
+  }
+  function setError(fieldId, errorId, msg) {
+    document.getElementById(errorId).textContent = msg;
+    document.getElementById(fieldId).classList.add('is-invalid');
+  }
+  function disableBtn(btn) { btn.style.opacity = '0.65'; btn.style.pointerEvents = 'none'; }
+  function resetBtn(btn)   { btn.style.opacity = '';     btn.style.pointerEvents = ''; }
+
+  document.getElementById('blogForm').addEventListener('submit', function(e) {
+    clearErrors();
+    const title = document.getElementById('title');
+    const btn   = document.querySelector('#blogForm button[type=submit]');
+    resetBtn(btn);
+
+    let valid = true;
+    if (!title.value.trim() || title.value.trim().length < 3) {
+      setError('title', 'titleError', 'Title must be at least 3 characters.');
+      valid = false;
+    }
+    if (!content.value.trim() || content.value.trim().length < 10) {
+      setError('content', 'contentError', 'Content must be at least 10 characters.');
+      valid = false;
+    }
+
+    if (!valid) {
+      e.preventDefault();
+    } else {
+      disableBtn(btn);
+    }
+  });
+</script>

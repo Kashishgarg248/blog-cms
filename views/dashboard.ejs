@@ -1,0 +1,123 @@
+<div class="page-header">
+  <h2>Welcome back, <%= currentUser.name %>! 👋</h2>
+  <p>Here's what's happening with your blogs.</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fas fa-file-alt"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= myBlogsCount %></div>
+      <div class="stat-label">Total Blogs</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fas fa-globe"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= myPublishedCount %></div>
+      <div class="stat-label">Published</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon orange"><i class="fas fa-edit"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= myDraftCount %></div>
+      <div class="stat-label">Drafts</div>
+    </div>
+  </div>
+  <% if (allStats) { %>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-user-clock"></i></div>
+    <div class="stat-info">
+      <div class="stat-number"><%= allStats.pendingUsers %></div>
+      <div class="stat-label">Pending Approvals</div>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<div class="dashboard-grid">
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h3>My Recent Blogs</h3>
+      <% if (can('create_blog')) { %>
+      <a href="/blogs/create" class="btn btn-sm btn-primary">
+        <i class="fas fa-plus"></i> New Blog
+      </a>
+      <% } %>
+    </div>
+
+    <% if (myRecentBlogs.length === 0) { %>
+    <div class="empty-state">
+      <i class="fas fa-feather-alt"></i>
+      <p>No blogs yet.</p>
+      <% if (can('create_blog')) { %>
+      <a href="/blogs/create" class="btn btn-primary">Write your first blog</a>
+      <% } %>
+    </div>
+    <% } else { %>
+    <div class="blog-list">
+      <% myRecentBlogs.forEach(blog => { %>
+      <div class="blog-list-item">
+        <div class="blog-list-info">
+          <a href="/blogs/<%= blog.id %>" class="blog-list-title"><%= blog.title %></a>
+          <div class="blog-meta">
+            <span class="badge badge-<%= blog.status %>"><%= blog.status %></span>
+            <span><%= new Date(blog.createdAt).toLocaleDateString() %></span>
+          </div>
+        </div>
+        <div class="blog-list-actions">
+          <% if (can('update_blog')) { %>
+          <a href="/blogs/<%= blog.id %>/edit" class="btn btn-sm btn-outline" title="Edit">
+            <i class="fas fa-edit"></i>
+          </a>
+          <% } %>
+          <% if (can('delete_blog')) { %>
+          <form action="/blogs/<%= blog.id %>?_method=DELETE" method="POST" style="display:inline"
+            onsubmit="return confirm('Delete this blog?')">
+            <button class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+          </form>
+          <% } %>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+    <div style="margin-top:1rem">
+      <% if (can('read_blog')) { %>
+      <a href="/blogs" class="btn btn-outline btn-sm">View All Blogs →</a>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h3>Quick Actions</h3>
+    </div>
+    <div class="quick-actions">
+      <% if (can('create_blog')) { %>
+      <a href="/blogs/create" class="quick-action">
+        <i class="fas fa-plus-circle"></i>
+        <span>New Blog Post</span>
+      </a>
+      <% } %>
+      <% if (can('read_blog')) { %>
+      <a href="/blogs" class="quick-action">
+        <i class="fas fa-newspaper"></i>
+        <span>Browse Blogs</span>
+      </a>
+      <% } %>
+      <% if (can('view_users') || can('approve_user')) { %>
+      <a href="/admin/users?filter=pending" class="quick-action">
+        <i class="fas fa-user-check"></i>
+        <span>Pending Approvals</span>
+        <% if (allStats && allStats.pendingUsers > 0) { %><span class="badge-count"><%= allStats.pendingUsers %></span><% } %>
+      </a>
+      <a href="/admin/dashboard" class="quick-action">
+        <i class="fas fa-chart-bar"></i>
+        <span>Admin Panel</span>
+      </a>
+      <% } %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,90 @@
+<div class="page-header">
+  <h2>User Management</h2>
+</div>
+
+<div class="filter-tabs">
+  <a href="/admin/users?filter=all" class="tab <%= filter === 'all' ? 'active' : '' %>">
+    All <span class="tab-count"><%= counts.all %></span>
+  </a>
+  <a href="/admin/users?filter=pending" class="tab <%= filter === 'pending' ? 'active' : '' %>">
+    Pending <span class="tab-count badge-pending"><%= counts.pending %></span>
+  </a>
+  <a href="/admin/users?filter=approved" class="tab <%= filter === 'approved' ? 'active' : '' %>">
+    Approved <span class="tab-count"><%= counts.approved %></span>
+  </a>
+  <a href="/admin/users?filter=rejected" class="tab <%= filter === 'rejected' ? 'active' : '' %>">
+    Rejected <span class="tab-count"><%= counts.rejected %></span>
+  </a>
+</div>
+
+<% if (users.length === 0) { %>
+<div class="empty-state">
+  <i class="fas fa-users"></i>
+  <p>No users found for this filter.</p>
+</div>
+<% } else { %>
+<div class="table-wrapper">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Joined</th>
+        <% if (can('approve_user')) { %><th>Actions</th><% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(user => { %>
+      <tr>
+        <td>
+          <div class="user-cell">
+            <div class="avatar-sm"><%= user.name.charAt(0).toUpperCase() %></div>
+            <div>
+              <div><strong><%= user.name %></strong></div>
+              <div class="text-sm text-muted"><%= user.email %></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge badge-<%= user.role %>"><%= user.role.replace('_',' ') %></span></td>
+        <td>
+          <span class="badge badge-<%= user.status %>"><%= user.status %></span>
+          <% if (pendingChangeUserIds && pendingChangeUserIds.has(user.id)) { %>
+          <span class="badge badge-pending" title="A change to this account is pending approval">pending change</span>
+          <% } %>
+        </td>
+        <td><%= new Date(user.createdAt).toLocaleDateString() %></td>
+        <% if (can('approve_user')) { %>
+        <%
+          const editorRank = ROLE_RANK[currentUser.role] || 0;
+          const targetRank = ROLE_RANK[user.role] || 0;
+          const isSelf = currentUser.id === user.id;
+          const editorCanAct = !isSelf && targetRank < editorRank;
+        %>
+        <td>
+          <div class="action-buttons">
+            <% if (editorCanAct) { %>
+            <a href="/admin/users/<%= user.id %>" class="btn btn-sm btn-outline">
+              <i class="fas fa-edit"></i> Manage
+            </a>
+            <% if (can('delete_user') && user.role !== 'super_admin') { %>
+            <form action="/admin/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline"
+              onsubmit="return confirm('Delete <%= user.name %>? This will also delete their blogs.')">
+              <button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+            </form>
+            <% } %>
+            <% } else { %>
+            <span class="locked-label">
+              <i class="fas fa-lock"></i>
+              <%= isSelf ? 'You' : 'Higher rank' %>
+            </span>
+            <% } %>
+          </div>
+        </td>
+        <% } %>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
