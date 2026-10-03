@@ -130,14 +130,32 @@ async function initializeApp() {
       console.log('   the Super Admin\'s own changes cannot be approved (self-approval is blocked).');
     }
 
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-    });
+    // Vercel runs this file as a serverless function and calls the exported
+    // app directly per-request — it does not need (or allow) a long-running
+    // listener. Only bind a port when running as a normal Node process
+    // (local dev, or a traditional host like Render/Railway/a VPS).
+    if (!process.env.VERCEL) {
+      const PORT = process.env.PORT || 3000;
+      app.listen(PORT, () => {
+        console.log(`🚀 Server running at http://localhost:${PORT}`);
+      });
+    } else {
+      console.log('✅ Running on Vercel — skipping app.listen(), app exported as handler');
+    }
   } catch (err) {
     console.error('❌ Startup error:', err.message);
-    process.exit(1);
+    // On Vercel, exiting the process on a transient startup error kills the
+    // whole function for every request. Let the request fail instead, so
+    // the next invocation gets a fresh chance to connect.
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
   }
 }
 
 initializeApp();
+
+// Vercel's Node runtime expects the module to export a request handler.
+// Express apps are callable as (req, res) => ..., so exporting it directly
+// works. Local runs are unaffected since app.listen() above still runs.
+module.exports = app;
