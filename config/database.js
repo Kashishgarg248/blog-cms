@@ -16,7 +16,17 @@ const sequelize = new Sequelize(
       min: 0,
       acquire: 30000,
       idle: 10000
-    }
+    },
+    // Supabase (and most hosted Postgres providers) require SSL.
+    // Set DB_SSL=true in your environment to enable it; leave unset for local Postgres.
+    dialectOptions: process.env.DB_SSL === 'true'
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false
+          }
+        }
+      : {}
   }
 );
 
