@@ -1,4 +1,5 @@
 const { Sequelize } = require('sequelize');
+require('pg'); // explicit require so Vercel's build tracer bundles the pg driver
 require('dotenv').config();
 
 const sequelize = new Sequelize(
