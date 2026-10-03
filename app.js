@@ -28,6 +28,103 @@ const sessionStore = new SequelizeStore({
   expiration: 24 * 60 * 60 * 1000
 });
 
+// ─── DB Sync & Seed Super Admin ───
+// This is kicked off immediately below and its promise is awaited by a
+// gate middleware (see "readyPromise" further down) before ANY request is
+// handled. On a serverless platform like Vercel, the exported app becomes
+// a live request handler the instant this module finishes loading — but
+// this function's work (DB connect, table sync, seeding) is asynchronous
+// and may still be in flight when the very first request of a cold start
+// arrives. Without the gate, that request can hit routes/session storage
+// before the "sessions" (or other) tables exist yet, causing errors like
+// `relation "sessions" does not exist`. The gate middleware fixes that by
+// holding every request until this promise resolves.
+async function initializeApp() {
+  await sequelize.authenticate();
+  console.log('✅ Database connected');
+
+  await sequelize.sync({ alter: true });
+  console.log('✅ Models synchronized');
+
+  await sessionStore.sync();
+  console.log('✅ Session store synchronized');
+
+  // Seed Super Admin if not exists
+  const existing = await User.findOne({ where: { role: 'super_admin' } });
+  if (!existing) {
+    await User.create({
+      name: 'Super Admin',
+      email: process.env.SUPER_ADMIN_EMAIL || 'superadmin@blog.com',
+      password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
+      role: ROLES.SUPER_ADMIN,
+      status: 'approved',
+      permissions: ROLE_PERMISSIONS[ROLES.SUPER_ADMIN]
+    });
+    console.log('✅ Super Admin seeded');
+    console.log('   Email:    superadmin@blog.com');
+    console.log('   Password: SuperAdmin@123');
+  }
+
+  // Seed an initial Checker (e.g. CEO) if credentials are provided.
+  // This is a one-time bootstrap step done directly against the DB, not
+  // through the app's own CRUD layer — because strict self-approval means
+  // the Super Admin alone can never approve their own first actions.
+  // Set CEO_EMAIL / CEO_PASSWORD / CEO_NAME in .env to enable this.
+  if (process.env.CEO_EMAIL && process.env.CEO_PASSWORD) {
+    const existingCeo = await User.findOne({ where: { email: process.env.CEO_EMAIL } });
+    if (!existingCeo) {
+      await User.create({
+        name: process.env.CEO_NAME || 'CEO',
+        email: process.env.CEO_EMAIL,
+        password: process.env.CEO_PASSWORD,
+        role: 'custom',
+        status: 'approved',
+        permissions: [
+          ...ROLE_PERMISSIONS[ROLES.WRITER], // create/read/update/delete/publish blog
+          PERMISSIONS.APPROVE_CHANGE,
+          PERMISSIONS.REJECT_CHANGE
+        ]
+      });
+      console.log('✅ Checker (CEO) account seeded');
+      console.log(`   Email: ${process.env.CEO_EMAIL}`);
+    }
+  } else {
+    console.log('ℹ️  No CEO_EMAIL/CEO_PASSWORD set — skipping checker bootstrap.');
+    console.log('   Until a second account holds approve_change/reject_change,');
+    console.log('   the Super Admin\'s own changes cannot be approved (self-approval is blocked).');
+  }
+
+  // Vercel runs this file as a serverless function and calls the exported
+  // app directly per-request — it does not need (or allow) a long-running
+  // listener. Only bind a port when running as a normal Node process
+  // (local dev, or a traditional host like Render/Railway/a VPS).
+  if (!process.env.VERCEL) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
+    });
+  } else {
+    console.log('✅ Running on Vercel — skipping app.listen(), app exported as handler');
+  }
+}
+
+// Kick off initialization immediately and keep the promise so the gate
+// middleware below can wait on it. Logged here (not thrown further) so a
+// failure surfaces as a clean 503 to the client instead of an unhandled
+// rejection crashing the whole function.
+const readyPromise = initializeApp().catch((err) => {
+  console.error('❌ Startup error:', err.message);
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  }
+  throw err;
+});
+
+// ─── Gate: hold every request until startup finishes ───
+app.use((req, res, next) => {
+  readyPromise.then(() => next()).catch(next);
+});
+
 // ─── Middleware ───
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -73,87 +170,6 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).render('error', { title: 'Server Error', error: err.message });
 });
-
-// ─── DB Sync & Seed Super Admin ───
-async function initializeApp() {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ Database connected');
-
-    await sequelize.sync({ alter: true });
-    console.log('✅ Models synchronized');
-
-    await sessionStore.sync();
-
-    // Seed Super Admin if not exists
-    const existing = await User.findOne({ where: { role: 'super_admin' } });
-    if (!existing) {
-      await User.create({
-        name: 'Super Admin',
-        email: process.env.SUPER_ADMIN_EMAIL || 'superadmin@blog.com',
-        password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
-        role: ROLES.SUPER_ADMIN,
-        status: 'approved',
-        permissions: ROLE_PERMISSIONS[ROLES.SUPER_ADMIN]
-      });
-      console.log('✅ Super Admin seeded');
-      console.log('   Email:    superadmin@blog.com');
-      console.log('   Password: SuperAdmin@123');
-    }
-
-    // Seed an initial Checker (e.g. CEO) if credentials are provided.
-    // This is a one-time bootstrap step done directly against the DB, not
-    // through the app's own CRUD layer — because strict self-approval means
-    // the Super Admin alone can never approve their own first actions.
-    // Set CEO_EMAIL / CEO_PASSWORD / CEO_NAME in .env to enable this.
-    if (process.env.CEO_EMAIL && process.env.CEO_PASSWORD) {
-      const existingCeo = await User.findOne({ where: { email: process.env.CEO_EMAIL } });
-      if (!existingCeo) {
-        await User.create({
-          name: process.env.CEO_NAME || 'CEO',
-          email: process.env.CEO_EMAIL,
-          password: process.env.CEO_PASSWORD,
-          role: 'custom',
-          status: 'approved',
-          permissions: [
-            ...ROLE_PERMISSIONS[ROLES.WRITER], // create/read/update/delete/publish blog
-            PERMISSIONS.APPROVE_CHANGE,
-            PERMISSIONS.REJECT_CHANGE
-          ]
-        });
-        console.log('✅ Checker (CEO) account seeded');
-        console.log(`   Email: ${process.env.CEO_EMAIL}`);
-      }
-    } else {
-      console.log('ℹ️  No CEO_EMAIL/CEO_PASSWORD set — skipping checker bootstrap.');
-      console.log('   Until a second account holds approve_change/reject_change,');
-      console.log('   the Super Admin\'s own changes cannot be approved (self-approval is blocked).');
-    }
-
-    // Vercel runs this file as a serverless function and calls the exported
-    // app directly per-request — it does not need (or allow) a long-running
-    // listener. Only bind a port when running as a normal Node process
-    // (local dev, or a traditional host like Render/Railway/a VPS).
-    if (!process.env.VERCEL) {
-      const PORT = process.env.PORT || 3000;
-      app.listen(PORT, () => {
-        console.log(`🚀 Server running at http://localhost:${PORT}`);
-      });
-    } else {
-      console.log('✅ Running on Vercel — skipping app.listen(), app exported as handler');
-    }
-  } catch (err) {
-    console.error('❌ Startup error:', err.message);
-    // On Vercel, exiting the process on a transient startup error kills the
-    // whole function for every request. Let the request fail instead, so
-    // the next invocation gets a fresh chance to connect.
-    if (!process.env.VERCEL) {
-      process.exit(1);
-    }
-  }
-}
-
-initializeApp();
 
 // Vercel's Node runtime expects the module to export a request handler.
 // Express apps are callable as (req, res) => ..., so exporting it directly
