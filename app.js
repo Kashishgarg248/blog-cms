@@ -83,7 +83,7 @@ async function initializeApp() {
     await sequelize.sync({ alter: true });
     console.log('✅ Models synchronized');
 
-    sessionStore.sync();
+    await sessionStore.sync();
 
     // Seed Super Admin if not exists
     const existing = await User.findOne({ where: { role: 'super_admin' } });
